@@ -1,0 +1,94 @@
+#!/bin/bash
+
+# Configuration
+API_BASE_URL="https://pokeapi.co/api/v2/pokemon"
+ERROR_LOG="fetch_errors.log"
+DELAY_SECONDS=1  # Delay between requests to respect rate limits
+
+# Array of Pokémon to fetch
+POKEMON_LIST=(
+    "bulbasaur"
+    "ivysaur"
+    "venusaur"
+    "charmander"
+    "charmeleon"
+)
+
+# Create/clear error log
+> "$ERROR_LOG"
+
+# Function to log errors with timestamp
+log_error() {
+    local pokemon="$1"
+    local error_msg="$2"
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] $pokemon: $error_msg" >> "$ERROR_LOG"
+}
+
+# Function to safely convert Pokémon name to lowercase for filename
+sanitize_filename() {
+    echo "$1" | tr '[:upper:]' '[:lower:]' | tr -cd '[:alnum:]._-'
+}
+
+# Function to fetch data for a single Pokémon
+fetch_pokemon_data() {
+    local pokemon="$1"
+    local filename="$(sanitize_filename "$pokemon").json"
+    
+    echo "Fetching data for $pokemon..."
+    
+    # Make API request with error handling
+    response=$(curl -s -w "\n%{http_code}" "$API_BASE_URL/$pokemon")
+    
+    # Get status code (last line) and body (everything except last line)
+    http_code=$(echo "$response" | tail -n1)
+    body=$(echo "$response" | sed '$d')
+    
+    # Check HTTP status code
+    case $http_code in
+        200)
+            # Pretty print JSON and save to file
+            echo "$body" | jq '.' > "$filename"
+            echo "✓ Successfully saved data to $filename"
+            ;;
+        404)
+            log_error "$pokemon" "Pokémon not found (404)"
+            echo "✗ Error: Pokémon not found"
+            return 1
+            ;;
+        429)
+            log_error "$pokemon" "Rate limit exceeded (429)"
+            echo "✗ Error: Rate limit exceeded. Increasing delay..."
+            DELAY_SECONDS=$((DELAY_SECONDS + 1))
+            return 1
+            ;;
+        *)
+            log_error "$pokemon" "HTTP error $http_code"
+            echo "✗ Error: HTTP status $http_code"
+            return 1
+            ;;
+    esac
+}
+
+# Main execution loop
+echo "Starting Pokémon data fetch for ${#POKEMON_LIST[@]} Pokémon..."
+echo "Using ${DELAY_SECONDS}s delay between requests..."
+
+for pokemon in "${POKEMON_LIST[@]}"; do
+    fetch_pokemon_data "$pokemon"
+    
+    # Check if there are more Pokémon to process
+    if [ ! "$pokemon" = "${POKEMON_LIST[-1]}" ]; then
+        echo "Waiting ${DELAY_SECONDS}s before next request..."
+        sleep "$DELAY_SECONDS"
+    fi
+done
+
+# Final status report
+echo -e "\nFetch process completed!"
+echo "Successful fetches: $(ls -1 *.json 2>/dev/null | wc -l)/${#POKEMON_LIST[@]}"
+
+if [ -s "$ERROR_LOG" ]; then
+    echo "Some errors occurred. Check $ERROR_LOG for details."
+    echo "Errors encountered:"
+    cat "$ERROR_LOG"
+fi
