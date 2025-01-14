@@ -2,20 +2,6 @@
 
 # Input file
 JSON_FILE="data.json"
-EXPECTED_OUTPUT="Pikachu is of type Electric, weighs 6kg, and is 0.4m tall."
-
-# Function to log test results
-log_test_result() {
-    local test_name="$1"
-    local result="$2"
-    local details="$3"
-    echo "Test: $test_name"
-    echo "Result: $result"
-    if [ -n "$details" ]; then
-        echo "Details: $details"
-    fi
-    echo "----------------------------------------"
-}
 
 # Check if file exists
 if [ ! -f "$JSON_FILE" ]; then
@@ -30,73 +16,5 @@ height=$(jq -r '.height / 10' "$JSON_FILE")
 weight=$(jq -r '.weight / 10' "$JSON_FILE")
 type=$(jq -r '.types[0].type.name' "$JSON_FILE" | sed 's/.*/\u&/')
 
-# Construct the output string using awk for string formatting
-ACTUAL_OUTPUT=$(awk -v name="$name" \
-    -v type="$type" \
-    -v weight="$weight" \
-    -v height="$height" \
-    'BEGIN {
-        printf "%s is of type %s, weighs %.0fkg, and is %.1fm tall.\n", 
-        name, type, weight, height
-    }')
-
-echo "Generated Output: $ACTUAL_OUTPUT"
-echo -e "\nRunning validation checks..."
-
-# Test 1: Exact match check
-if [ "$ACTUAL_OUTPUT" = "$EXPECTED_OUTPUT" ]; then
-    log_test_result "Exact Output Match" "PASS" ""
-else
-    log_test_result "Exact Output Match" "FAIL" "Expected: $EXPECTED_OUTPUT\nGot: $ACTUAL_OUTPUT"
-fi
-
-# Test 2: Format structure check
-FORMAT_REGEX="^[A-Z][a-z]+ is of type [A-Z][a-z]+, weighs [0-9]+kg, and is [0-9]+\.[0-9]+m tall\.$"
-if echo "$ACTUAL_OUTPUT" | grep -E "$FORMAT_REGEX" > /dev/null; then
-    log_test_result "Format Structure" "PASS" ""
-else
-    log_test_result "Format Structure" "FAIL" "Output doesn't match expected format"
-fi
-
-# Test 3: Individual components check
-# Extract components using awk
-ACTUAL_NAME=$(echo "$ACTUAL_OUTPUT" | awk '{print $1}')
-ACTUAL_TYPE=$(echo "$ACTUAL_OUTPUT" | awk -F"type " '{print $2}' | awk -F"," '{print $1}')
-ACTUAL_WEIGHT=$(echo "$ACTUAL_OUTPUT" | awk '{print $6}' | sed 's/kg,//')
-ACTUAL_HEIGHT=$(echo "$ACTUAL_OUTPUT" | awk '{print $9}' | sed 's/m//')
-
-# Check name
-if [ "$ACTUAL_NAME" = "Pikachu" ]; then
-    log_test_result "Name Check" "PASS" ""
-else
-    log_test_result "Name Check" "FAIL" "Expected: Pikachu, Got: $ACTUAL_NAME"
-fi
-
-# Check type
-if [ "$ACTUAL_TYPE" = "Electric" ]; then
-    log_test_result "Type Check" "PASS" ""
-else
-    log_test_result "Type Check" "FAIL" "Expected: Electric, Got: $ACTUAL_TYPE"
-fi
-
-# Check weight
-if [ "$ACTUAL_WEIGHT" = "6" ]; then
-    log_test_result "Weight Check" "PASS" ""
-else
-    log_test_result "Weight Check" "FAIL" "Expected: 6, Got: $ACTUAL_WEIGHT"
-fi
-
-# Check height
-if [ "$ACTUAL_HEIGHT" = "0.4" ]; then
-    log_test_result "Height Check" "PASS" ""
-else
-    log_test_result "Height Check" "FAIL" "Expected: 0.4, Got: $ACTUAL_HEIGHT"
-fi
-
-# Test 4: Check for proper punctuation and spacing
-if echo "$ACTUAL_OUTPUT" | grep -E ", " > /dev/null && \
-   echo "$ACTUAL_OUTPUT" | grep -E "\.$" > /dev/null; then
-    log_test_result "Punctuation and Spacing" "PASS" ""
-else
-    log_test_result "Punctuation and Spacing" "FAIL" "Missing proper punctuation or spacing"
-fi
+# Format the output string
+printf "%s is of type %s, weighs %.0fkg, and is %.1fm tall.\n" "$name" "$type" "$weight" "$height"
