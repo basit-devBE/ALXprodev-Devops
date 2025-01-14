@@ -1,0 +1,27 @@
+#!/bin/bash
+
+# Input file
+JSON_FILE="data.json"
+
+# Check if file exists
+if [ ! -f "$JSON_FILE" ]; then
+    echo "Error: $JSON_FILE not found!"
+    exit 1
+fi
+
+# Extract data using jq
+# Convert height from decimeters to meters and weight from hectograms to kilograms
+name=$(jq -r '.name' "$JSON_FILE" | sed 's/.*/\u&/')
+height=$(jq -r '.height / 10' "$JSON_FILE")
+weight=$(jq -r '.weight / 10' "$JSON_FILE")
+type=$(jq -r '.types[0].type.name' "$JSON_FILE" | sed 's/.*/\u&/')
+
+# Construct the output string using awk for string formatting
+awk -v name="$name" \
+    -v type="$type" \
+    -v weight="$weight" \
+    -v height="$height" \
+    'BEGIN {
+        printf "%s is of type %s, weighs %.0fkg, and is %.1fm tall.\n", 
+        name, type, weight, height
+    }'
