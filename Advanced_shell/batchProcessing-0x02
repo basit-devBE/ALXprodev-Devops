@@ -61,7 +61,15 @@ make_api_request() {
         # Get status code (last line) and body (everything except last line)
         http_code=$(echo "$response" | tail -n1)
         body=$(echo "$response" | sed '$d')
-        
+        Objective: Create a report that summarizes data for multiple Pokémon.
+
+Instructions:
+
+Write a shell script that reads all the JSON files generated in Task 3 and extracts the name, height, and weight of each Pokémon.
+
+Generate a CSV file containing the Pokémon’s name, height, and weight.
+
+Use awk to calculate the average height and weight of all Pokémon in the report.
         case $http_code in
             200)
                 # Validate JSON response
