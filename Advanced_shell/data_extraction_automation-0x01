@@ -16,5 +16,24 @@ height=$(jq -r '.height / 10' "$JSON_FILE")
 weight=$(jq -r '.weight / 10' "$JSON_FILE")
 type=$(jq -r '.types[0].type.name' "$JSON_FILE" | sed 's/.*/\u&/')
 
-# Format the output string
-printf "%s is of type %s, weighs %.0fkg, and is %.1fm tall.\n" "$name" "$type" "$weight" "$height"
+# Validation: Check if extracted values are empty or invalid
+if [ -z "$name" ] || [ -z "$type" ] || [ -z "$height" ] || [ -z "$weight" ]; then
+    echo "Error: Missing or invalid data in $JSON_FILE"
+    exit 1
+fi
+
+# Ensure numeric values for height and weight
+if ! [[ "$height" =~ ^[0-9]+(\.[0-9]+)?$ ]] || ! [[ "$weight" =~ ^[0-9]+(\.[0-9]+)?$ ]]; then
+    echo "Error: Height or weight contains non-numeric data in $JSON_FILE"
+    exit 1
+fi
+
+# Construct the output string using awk for string formatting
+awk -v name="$name" \
+    -v type="$type" \
+    -v weight="$weight" \
+    -v height="$height" \
+    'BEGIN {
+        printf "%s is of type %s, weighs %.0fkg, and is %.1fm tall.\n", 
+        name, type, weight, height
+    }'
